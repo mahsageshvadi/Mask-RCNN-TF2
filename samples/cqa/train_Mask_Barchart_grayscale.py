@@ -114,7 +114,7 @@ class ShapesDataset(utils.Dataset):
         """
         info = self.image_info[image_id]
         bars = info['bars']
-        image = np.ones(shape=(info['height'], info['width'], 3))
+        image = np.ones(shape=(info['height'], info['width'], 1))
         image= self.drawImage(image, bars, info['height'],  info['width'])
         return image/255
     
@@ -145,11 +145,11 @@ class ShapesDataset(utils.Dataset):
     def GenerateBarData(self, height, width):
     
         min_num_obj = 3
-        max_num_obj = 6
+        max_num_obj = 12
         num=np.random.randint(min_num_obj, max_num_obj + 1)
         #todo: change max_obj_num for more bars
-        max_obj_num = 6
-        colors = np.random.uniform(0.0, 0.9,size = (max_obj_num,3))
+        max_obj_num = 12
+        thickness = np.random.randint(1, 3)
         heights = np.random.randint(10,80,size=(num))
 
         barWidth = int( (width-3*(num+1)-3)//num * (np.random.randint(50,100)/100.0) )
@@ -166,7 +166,7 @@ class ShapesDataset(utils.Dataset):
             ey = sy - heights[i]
 
             bar_name = 'bar_{}'.format(i)
-            bars.append((bar_name, colors[i], (sx, sy, ex, ey)))
+            bars.append((bar_name, thickness, (sx, sy, ex, ey)))
             sx = ex + spaceWidth
 
         return bars
@@ -176,11 +176,9 @@ class ShapesDataset(utils.Dataset):
         
         for bar in bars:
             sx, sy, ex, ey = bar[2]
-            if mask== False:
-                color = bar[1]
-            else:
-                color = 1
-            cv2.rectangle(image,(sx,sy),(ex,ey),color,-1)
+            thickness = bar[1]
+
+            cv2.rectangle(image,(sx,sy),(ex,ey),0,thickness)
         if mask is False:
             channel  = 3
             noises = np.random.uniform(0, 0.05, (height, width,channel))
@@ -193,11 +191,19 @@ class ShapesDataset(utils.Dataset):
         return image * 255
         
 dataset_train = ShapesDataset()
+
+dataset_train.load_shapes(10000, config.IMAGE_SHAPE[0], config.IMAGE_SHAPE[1])
+dataset_train.prepare()
+
+dataset_val = ShapesDataset()
+dataset_val.load_shapes(100, config.IMAGE_SHAPE[0], config.IMAGE_SHAPE[1])
+
 dataset_train.load_shapes(500, config.IMAGE_SHAPE[0], config.IMAGE_SHAPE[1])
 dataset_train.prepare()
 
 dataset_val = ShapesDataset()
 dataset_val.load_shapes(50, config.IMAGE_SHAPE[0], config.IMAGE_SHAPE[1])
+
 dataset_val.prepare()
 
 
@@ -221,7 +227,6 @@ elif init_with == "last":
     # Load the last model you trained and continue training
     model.load_weights(model.find_last(), by_name=True)
     
-
 import os
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'     
     
@@ -243,7 +248,6 @@ model.train(dataset_train, dataset_val,
             epochs=1, 
             layers='heads')
 
-#>>>>>>> 3210294c4dc0f1a5098b38b6a00c193fdfcf5d3b
 model_path = os.path.join(MODEL_DIR, "mask_rcnn_shapes.h5")
 model.keras_model.save_weights(model_path)
 

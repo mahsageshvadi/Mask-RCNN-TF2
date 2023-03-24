@@ -22,22 +22,22 @@ from mrcnn.model import log
 
 
 # Directory to save logs and trained model
-MODEL_DIR = os.path.join(ROOT_DIR, "logs")
+MODEL_DIR = os.path.join(ROOT_DIR, "logs_piechart")
 
 # Local path to trained weights file
 COCO_MODEL_PATH = os.path.join(ROOT_DIR, "mask_rcnn_coco.h5")
 # Download COCO trained weights from Releases if needed
 if not os.path.exists(COCO_MODEL_PATH):
     utils.download_trained_weights(COCO_MODEL_PATH)
-    
-    
+   
+
 class ShapesConfig(Config):
     """Configuration for training on the toy shapes dataset.
     Derives from the base Config class and overrides values specific
     to the toy shapes dataset.
     """
     # Give the configuration a recognizable name
-    NAME = "CQA"
+    NAME = "CQA_PieChart"
 
     # Train on 1 GPU and 8 images per GPU. We can put multiple images on each
     # GPU because the images are small. Batch size is 8 (GPUs * images/GPU).
@@ -68,17 +68,9 @@ class ShapesConfig(Config):
 config = ShapesConfig()
 
 
-def get_ax(rows=1, cols=1, size=8):
-    """Return a Matplotlib Axes array to be used in
-    all visualizations in the notebook. Provide a
-    central point to control graph sizes.
-    
-    Change the default size attribute to control the size
-    of rendered images
-    """
-    _, ax = plt.subplots(rows, cols, figsize=(size*cols, size*rows))
-    return ax
 
+def Normalize(arr):
+    return arr / np.sum(arr)
 
 
 class ShapesDataset(utils.Dataset):
@@ -93,7 +85,7 @@ class ShapesDataset(utils.Dataset):
         height, width: the size of the generated images.
         """
         # Add classes
-        self.add_class("CQA", 1, "bar")
+        self.add_class("CQA_PieChart", 1, "pie")
 
 
         # Add images
@@ -101,21 +93,17 @@ class ShapesDataset(utils.Dataset):
         # list of shapes sizes and locations). This is more compact than
         # actual images. Images are generated on the fly in load_image().
         for i in range(count):
-            bars= self.GenerateBarData(width, height)
-            self.add_image("CQA", image_id=i, path=None,
-                           width=width, height=height, bars=bars)#,
+            pies= self.GeneratePieData(width, height)
+            self.add_image("CQA_PieChart", image_id=i, path=None,
+                           width=width, height=height, pies=pies)#,
                           # bg_color=bg_color, shapes=shapes)
                 
     def load_image(self, image_id):
-        """Generate an image from the specs of the given image ID.
-        Typically this function loads the image from a file, but
-        in this case it generates the image on the fly from the
-        specs in image_info.
-        """
+ 
         info = self.image_info[image_id]
-        bars = info['bars']
+        pies = info['pies']
         image = np.ones(shape=(info['height'], info['width'], 3))
-        image= self.drawImage(image, bars, info['height'],  info['width'])
+        image= self.drawImage(image, pies, info['height'],  info['width'])
         return image/255
     
     
@@ -123,13 +111,13 @@ class ShapesDataset(utils.Dataset):
         """Generate instance masks for shapes of the given image ID.
         """
         info = self.image_info[image_id]
-        bars = info['bars']
-        count = len(bars)
+        pies = info['pies']
+        count = len(pies)
         mask = np.zeros([info['height'], info['width'], count], dtype=np.uint8)
-        for i, (bar_name, _, dims) in enumerate(info['bars']):
+        for i, (pie_name, _, _ , _ , _, _) in enumerate(info['pies']):
  
             mask[:, :, i:i+1] = self.drawImage(mask[:, :, i:i+1].copy(),
-                                                [bars[i]], info['height'], info['width'], True)
+                                                [pies[i]], info['height'], info['width'], True)
 
         
         # Handle occlusions
@@ -138,49 +126,56 @@ class ShapesDataset(utils.Dataset):
             mask[:, :, i] = mask[:, :, i] * occlusion
             occlusion = np.logical_and(occlusion, np.logical_not(mask[:, :, i]))
         # Map class names to class IDs.
-        class_ids = np.array([self.class_names.index('bar') for s in bars])
+        class_ids = np.array([self.class_names.index('pie') for s in pies])
         return mask.astype(bool), class_ids.astype(np.int32)
         
+
     
-    def GenerateBarData(self, height, width):
+    def GeneratePieData(self, height, width):
     
         min_num_obj = 3
         max_num_obj = 6
         num=np.random.randint(min_num_obj, max_num_obj + 1)
-        #todo: change max_obj_num for more bars
+
         max_obj_num = 6
         colors = np.random.uniform(0.0, 0.9,size = (max_obj_num,3))
-        heights = np.random.randint(10,80,size=(num))
-
-        barWidth = int( (width-3*(num+1)-3)//num * (np.random.randint(50,100)/100.0) )
-        barWidth = max(barWidth, 4)
-        spaceWidth = (width-(barWidth)*num)//(num+1)
-
-        sx = (width - barWidth*num - spaceWidth*(num-1))//2
-        bars = []
+        
+        r = np.random.randint(25,45) 
+        center = (int(height/2),int(width/2))
+        angles = Normalize(np.random.randint(10,60,size=(num)))
+        
+        start_angle = 90 - np.random.randint(0,360*angles[0])/2.0
+        _cur_start_angle = start_angle
+        
+        
+        pies = []
 
         for i in range(num):
 
-            sy = width - 1
-            ex = sx + barWidth
-            ey = sy - heights[i]
+            _cur_end_angle = _cur_start_angle + angles[i] * 360.0
 
-            bar_name = 'bar_{}'.format(i)
-            bars.append((bar_name, colors[i], (sx, sy, ex, ey)))
-            sx = ex + spaceWidth
-
-        return bars
+            pie_name = 'pie_{}'.format(i)
+            pies.append((pie_name, colors[i], center, r, _cur_start_angle, _cur_end_angle))
+            
+            _cur_start_angle = _cur_end_angle
+            
+        return pies
      
     
-    def drawImage(self, image, bars, height, width, mask=False):
+    def drawImage(self, image, pies, height, width, mask=False):
         
-        for bar in bars:
-            sx, sy, ex, ey = bar[2]
+        for pie in pies:
+            center = pie[2]
+            r = pie[3]
+            _cur_start_angle = pie[4]
+            _cur_end_angle = pie[5]
             if mask== False:
-                color = bar[1]
+                color = pie[1]
             else:
                 color = 1
-            cv2.rectangle(image,(sx,sy),(ex,ey),color,-1)
+                
+            cv2.ellipse(image, center, (r, r), 270, -_cur_start_angle, -_cur_end_angle, color, -1)
+            
         if mask is False:
             channel  = 3
             noises = np.random.uniform(0, 0.05, (height, width,channel))
@@ -191,7 +186,7 @@ class ShapesDataset(utils.Dataset):
             image /= (_max - _min)
         
         return image * 255
-        
+    
 dataset_train = ShapesDataset()
 dataset_train.load_shapes(500, config.IMAGE_SHAPE[0], config.IMAGE_SHAPE[1])
 dataset_train.prepare()
@@ -199,6 +194,7 @@ dataset_train.prepare()
 dataset_val = ShapesDataset()
 dataset_val.load_shapes(50, config.IMAGE_SHAPE[0], config.IMAGE_SHAPE[1])
 dataset_val.prepare()
+
 
 
 # Create model in training mode
@@ -243,12 +239,5 @@ model.train(dataset_train, dataset_val,
             epochs=1, 
             layers='heads')
 
-#>>>>>>> 3210294c4dc0f1a5098b38b6a00c193fdfcf5d3b
-model_path = os.path.join(MODEL_DIR, "mask_rcnn_shapes.h5")
+model_path = os.path.join(MODEL_DIR, "mask_rcnn_piechart.h5")
 model.keras_model.save_weights(model_path)
-
-
-
-
-
-
