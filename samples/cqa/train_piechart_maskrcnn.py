@@ -188,11 +188,11 @@ class ShapesDataset(utils.Dataset):
         return image * 255
     
 dataset_train = ShapesDataset()
-dataset_train.load_shapes(500, config.IMAGE_SHAPE[0], config.IMAGE_SHAPE[1])
+dataset_train.load_shapes(1000, config.IMAGE_SHAPE[0], config.IMAGE_SHAPE[1])
 dataset_train.prepare()
 
 dataset_val = ShapesDataset()
-dataset_val.load_shapes(50, config.IMAGE_SHAPE[0], config.IMAGE_SHAPE[1])
+dataset_val.load_shapes(200, config.IMAGE_SHAPE[0], config.IMAGE_SHAPE[1])
 dataset_val.prepare()
 
 
@@ -234,10 +234,10 @@ model.train(dataset_train, dataset_val,
 
     
     
-model.train(dataset_train, dataset_val, 
-            learning_rate=config.LEARNING_RATE, 
-            epochs=1, 
-            layers='heads')
+#model.train(dataset_train, dataset_val, 
+        #    learning_rate=config.LEARNING_RATE, 
+        #    epochs=1, 
+        #    layers='heads')
 
 model_path = os.path.join(MODEL_DIR, "mask_rcnn_piechart.h5")
 model.keras_model.save_weights(model_path)

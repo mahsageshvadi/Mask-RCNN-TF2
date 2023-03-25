@@ -22,7 +22,7 @@ from mrcnn.model import log
 
 
 # Directory to save logs and trained model
-MODEL_DIR = os.path.join(ROOT_DIR, "logs")
+MODEL_DIR = os.path.join(ROOT_DIR, "logs_bargrayscale")
 
 # Local path to trained weights file
 COCO_MODEL_PATH = os.path.join(ROOT_DIR, "mask_rcnn_coco.h5")
