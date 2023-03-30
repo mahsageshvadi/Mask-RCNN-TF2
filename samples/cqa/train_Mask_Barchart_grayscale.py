@@ -180,7 +180,7 @@ class ShapesDataset(utils.Dataset):
 
             cv2.rectangle(image,(sx,sy),(ex,ey),0,thickness)
         if mask is False:
-            channel  = 3
+            channel  = 1
             noises = np.random.uniform(0, 0.05, (height, width,channel))
             image = image + noises
             _min = 0.0
@@ -192,17 +192,11 @@ class ShapesDataset(utils.Dataset):
         
 dataset_train = ShapesDataset()
 
-dataset_train.load_shapes(10000, config.IMAGE_SHAPE[0], config.IMAGE_SHAPE[1])
+dataset_train.load_shapes(1, config.IMAGE_SHAPE[0], config.IMAGE_SHAPE[1])
 dataset_train.prepare()
 
 dataset_val = ShapesDataset()
-dataset_val.load_shapes(100, config.IMAGE_SHAPE[0], config.IMAGE_SHAPE[1])
-
-dataset_train.load_shapes(500, config.IMAGE_SHAPE[0], config.IMAGE_SHAPE[1])
-dataset_train.prepare()
-
-dataset_val = ShapesDataset()
-dataset_val.load_shapes(50, config.IMAGE_SHAPE[0], config.IMAGE_SHAPE[1])
+dataset_val.load_shapes(1, config.IMAGE_SHAPE[0], config.IMAGE_SHAPE[1])
 
 dataset_val.prepare()
 
@@ -214,26 +208,26 @@ model = modellib.MaskRCNN(mode="training", config=config,
 # Which weights to start with?
 init_with = "coco"  # imagenet, coco, or last
 
-if init_with == "imagenet":
-    model.load_weights(model.get_imagenet_weights(), by_name=True)
-elif init_with == "coco":
+#if init_with == "imagenet":
+   # model.load_weights(model.get_imagenet_weights(), by_name=True)
+#elif init_with == "coco":
     # Load weights trained on MS COCO, but skip layers that
     # are different due to the different number of classes
     # See README for instructions to download the COCO weights
-    model.load_weights(COCO_MODEL_PATH, by_name=True,
-                       exclude=["mrcnn_class_logits", "mrcnn_bbox_fc", 
-                                "mrcnn_bbox", "mrcnn_mask"])
-elif init_with == "last":
+  #  model.load_weights(COCO_MODEL_PATH, by_name=True,
+     #                  exclude=["mrcnn_class_logits", "mrcnn_bbox_fc", 
+        #                        "mrcnn_bbox", "mrcnn_mask"])
+#elif init_with == "last":
     # Load the last model you trained and continue training
-    model.load_weights(model.find_last(), by_name=True)
+   # model.load_weights(model.find_last(), by_name=True)
     
 import os
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'     
     
-model.train(dataset_train, dataset_val, 
-            learning_rate=config.LEARNING_RATE, 
-            epochs=30, 
-            layers='heads')
+#model.train(dataset_train, dataset_val, 
+        #    learning_rate=config.LEARNING_RATE, 
+          #  epochs=30, 
+         #   layers='heads')
 
 model.train(dataset_train, dataset_val, 
             learning_rate=config.LEARNING_RATE / 10,
@@ -248,7 +242,7 @@ model.train(dataset_train, dataset_val,
             epochs=1, 
             layers='heads')
 
-model_path = os.path.join(MODEL_DIR, "mask_rcnn_shapes.h5")
+model_path = os.path.join(MODEL_DIR, "mask_rcnn_shapes_bargray.h5")
 model.keras_model.save_weights(model_path)
 
 
