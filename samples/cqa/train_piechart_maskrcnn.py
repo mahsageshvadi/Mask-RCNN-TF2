@@ -92,11 +92,26 @@ class ShapesDataset(utils.Dataset):
         # Generate random specifications of images (i.e. color and
         # list of shapes sizes and locations). This is more compact than
         # actual images. Images are generated on the fly in load_image().
+        numberofPies = []
+        all_angels = []
         for i in range(count):
-            pies= self.GeneratePieData(width, height)
+            pies, npies,angles_  = self.GeneratePieData(width, height)
+            numberofPies.append(npies)
             self.add_image("CQA_PieChart", image_id=i, path=None,
                            width=width, height=height, pies=pies)#,
                           # bg_color=bg_color, shapes=shapes)
+                
+            for a in range(len(angles_)):
+                all_angels.append(angles_[a])
+        
+        numberofpieLog = open(MODEL_DIR + "/numberofpieLog.txt",'w')
+        numberofpieLog.write(str(numberofPies) + '\t')
+        numberofpieLog.close()
+        
+        numberofpieLog = open(MODEL_DIR + "/angles.txt",'w')
+        numberofpieLog.write(str(all_angels) + '\t')
+        numberofpieLog.close()
+                
                 
     def load_image(self, image_id):
  
@@ -134,10 +149,10 @@ class ShapesDataset(utils.Dataset):
     def GeneratePieData(self, height, width):
     
         min_num_obj = 3
-        max_num_obj = 6
+        max_num_obj = 12
         num=np.random.randint(min_num_obj, max_num_obj + 1)
 
-        max_obj_num = 6
+        max_obj_num = 12
         colors = np.random.uniform(0.0, 0.9,size = (max_obj_num,3))
         
         r = np.random.randint(25,45) 
@@ -149,6 +164,7 @@ class ShapesDataset(utils.Dataset):
         
         
         pies = []
+        angles_list = []
 
         for i in range(num):
 
@@ -157,9 +173,12 @@ class ShapesDataset(utils.Dataset):
             pie_name = 'pie_{}'.format(i)
             pies.append((pie_name, colors[i], center, r, _cur_start_angle, _cur_end_angle))
             
+            angles_list.append(abs(_cur_start_angle-_cur_end_angle))
+
             _cur_start_angle = _cur_end_angle
             
-        return pies
+            
+        return pies, num, angles_list
      
     
     def drawImage(self, image, pies, height, width, mask=False):
@@ -202,7 +221,7 @@ model = modellib.MaskRCNN(mode="training", config=config,
                           model_dir=MODEL_DIR)
 
 # Which weights to start with?
-init_with = "imagenet"  # imagenet, coco, or last
+init_with = "coco"  # imagenet, coco, or last
 
 if init_with == "imagenet":
     model.load_weights(model.get_imagenet_weights(), by_name=True)
@@ -239,5 +258,5 @@ model.train(dataset_train, dataset_val,
         #    epochs=1, 
         #    layers='heads')
 
-model_path = os.path.join(MODEL_DIR, "mask_rcnn_piechart.h5")
+model_path = os.path.join(MODEL_DIR, "mask_rcnn_piechart_12.h5")
 model.keras_model.save_weights(model_path)

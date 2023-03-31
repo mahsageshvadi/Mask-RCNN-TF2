@@ -22,7 +22,7 @@ from mrcnn.model import log
 
 
 # Directory to save logs and trained model
-MODEL_DIR = os.path.join(ROOT_DIR, "logs_bargrayscale")
+MODEL_DIR = os.path.join(ROOT_DIR, "logs_bargrayscale12")
 
 # Local path to trained weights file
 COCO_MODEL_PATH = os.path.join(ROOT_DIR, "mask_rcnn_coco.h5")
@@ -114,8 +114,8 @@ class ShapesDataset(utils.Dataset):
         """
         info = self.image_info[image_id]
         bars = info['bars']
-        image = np.ones(shape=(info['height'], info['width'], 1))
-        image= self.drawImage(image, bars, info['height'],  info['width'])
+        image = np.ones(shape=(info['height'], info['width'], 3))
+        image = self.drawImage(image, bars, info['height'],  info['width'])
         return image/255
     
     
@@ -149,7 +149,7 @@ class ShapesDataset(utils.Dataset):
         num=np.random.randint(min_num_obj, max_num_obj + 1)
         #todo: change max_obj_num for more bars
         max_obj_num = 12
-        thickness = np.random.randint(1, 3)
+        colors = np.random.uniform(0.0, 0.9,size = (max_obj_num,3))
         heights = np.random.randint(10,80,size=(num))
 
         barWidth = int( (width-3*(num+1)-3)//num * (np.random.randint(50,100)/100.0) )
@@ -166,7 +166,7 @@ class ShapesDataset(utils.Dataset):
             ey = sy - heights[i]
 
             bar_name = 'bar_{}'.format(i)
-            bars.append((bar_name, thickness, (sx, sy, ex, ey)))
+            bars.append((bar_name, colors[i], (sx, sy, ex, ey)))
             sx = ex + spaceWidth
 
         return bars
@@ -174,13 +174,20 @@ class ShapesDataset(utils.Dataset):
     
     def drawImage(self, image, bars, height, width, mask=False):
         
+        thickness = np.random.randint(1, 3)
         for bar in bars:
+            
             sx, sy, ex, ey = bar[2]
-            thickness = bar[1]
+            if mask== False:
+                color = 0
+            else:
+                color = 1
+                
 
-            cv2.rectangle(image,(sx,sy),(ex,ey),0,thickness)
+            cv2.rectangle(image,(sx,sy),(ex,ey),color,thickness)
+            
         if mask is False:
-            channel  = 1
+            channel  = 3
             noises = np.random.uniform(0, 0.05, (height, width,channel))
             image = image + noises
             _min = 0.0
@@ -188,18 +195,16 @@ class ShapesDataset(utils.Dataset):
             image -= _min
             image /= (_max - _min)
         
-        return image * 255
-        
+        return image * 255 
+    
+    
 dataset_train = ShapesDataset()
-
-dataset_train.load_shapes(1, config.IMAGE_SHAPE[0], config.IMAGE_SHAPE[1])
+dataset_train.load_shapes(100000, config.IMAGE_SHAPE[0], config.IMAGE_SHAPE[1])
 dataset_train.prepare()
 
 dataset_val = ShapesDataset()
-dataset_val.load_shapes(1, config.IMAGE_SHAPE[0], config.IMAGE_SHAPE[1])
-
+dataset_val.load_shapes(5005, config.IMAGE_SHAPE[0], config.IMAGE_SHAPE[1])
 dataset_val.prepare()
-
 
 # Create model in training mode
 model = modellib.MaskRCNN(mode="training", config=config,
@@ -208,26 +213,27 @@ model = modellib.MaskRCNN(mode="training", config=config,
 # Which weights to start with?
 init_with = "coco"  # imagenet, coco, or last
 
-#if init_with == "imagenet":
-   # model.load_weights(model.get_imagenet_weights(), by_name=True)
-#elif init_with == "coco":
+if init_with == "imagenet":
+    model.load_weights(model.get_imagenet_weights(), by_name=True)
+elif init_with == "coco":
     # Load weights trained on MS COCO, but skip layers that
     # are different due to the different number of classes
     # See README for instructions to download the COCO weights
-  #  model.load_weights(COCO_MODEL_PATH, by_name=True,
-     #                  exclude=["mrcnn_class_logits", "mrcnn_bbox_fc", 
-        #                        "mrcnn_bbox", "mrcnn_mask"])
-#elif init_with == "last":
+    model.load_weights(COCO_MODEL_PATH, by_name=True,
+                       exclude=["mrcnn_class_logits", "mrcnn_bbox_fc", 
+                                "mrcnn_bbox", "mrcnn_mask"])
+elif init_with == "last":
     # Load the last model you trained and continue training
-   # model.load_weights(model.find_last(), by_name=True)
+    model.load_weights(model.find_last(), by_name=True)
     
+
 import os
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'     
     
-#model.train(dataset_train, dataset_val, 
-        #    learning_rate=config.LEARNING_RATE, 
-          #  epochs=30, 
-         #   layers='heads')
+model.train(dataset_train, dataset_val, 
+            learning_rate=config.LEARNING_RATE, 
+            epochs=30, 
+            layers='heads')
 
 model.train(dataset_train, dataset_val, 
             learning_rate=config.LEARNING_RATE / 10,
@@ -242,7 +248,8 @@ model.train(dataset_train, dataset_val,
             epochs=1, 
             layers='heads')
 
-model_path = os.path.join(MODEL_DIR, "mask_rcnn_shapes_bargray.h5")
+#>>>>>>> 3210294c4dc0f1a5098b38b6a00c193fdfcf5d3b
+model_path = os.path.join(MODEL_DIR, "mask_rcnn_shapes.h5")
 model.keras_model.save_weights(model_path)
 
 

@@ -145,10 +145,10 @@ class ShapesDataset(utils.Dataset):
     def GenerateBarData(self, height, width):
     
         min_num_obj = 3
-        max_num_obj = 6
+        max_num_obj = 12
         num=np.random.randint(min_num_obj, max_num_obj + 1)
         #todo: change max_obj_num for more bars
-        max_obj_num = 6
+        max_obj_num = 12
         colors = np.random.uniform(0.0, 0.9,size = (max_obj_num,3))
         heights = np.random.randint(10,80,size=(num))
 
@@ -193,11 +193,11 @@ class ShapesDataset(utils.Dataset):
         return image * 255
         
 dataset_train = ShapesDataset()
-dataset_train.load_shapes(500, config.IMAGE_SHAPE[0], config.IMAGE_SHAPE[1])
+dataset_train.load_shapes(100000, config.IMAGE_SHAPE[0], config.IMAGE_SHAPE[1])
 dataset_train.prepare()
 
 dataset_val = ShapesDataset()
-dataset_val.load_shapes(50, config.IMAGE_SHAPE[0], config.IMAGE_SHAPE[1])
+dataset_val.load_shapes(5000, config.IMAGE_SHAPE[0], config.IMAGE_SHAPE[1])
 dataset_val.prepare()
 
 
